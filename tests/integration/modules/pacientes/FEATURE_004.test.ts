@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { ErroPermissao, ErroValidacao } from '@/lib/erros';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
 import { carregarUsuario } from '@/modules/autenticacao';
+import { agendamentoService } from '@/modules/agendamento';
 import { ErroCpfDuplicado, pacienteService } from '@/modules/pacientes';
 import { itComBanco, usarBancoLimpo } from '@tests/support/banco';
+import { dadosAgendamento, prepararAgenda } from '@tests/fixtures/agendamentos';
 import { criarClinicaComAdmin } from '@tests/fixtures/clinica';
 import { criarDentistaDeTeste } from '@tests/fixtures/dentistas';
 import { criarPacienteDeTeste } from '@tests/fixtures/pacientes';
@@ -65,7 +67,14 @@ describe('FEATURE_004 — Cadastro de Pacientes', () => {
       expect(await pacienteService.obter(ctx, paciente.id)).toMatchObject({ id: paciente.id, nome: 'João Pereira' });
     }
   });
-  it.todo('Cenário 2 (integração): paciente selecionável ao criar o agendamento real — Feature 006');
+  itComBanco('Cenário 2 (integração): paciente selecionável ao criar o agendamento real — Feature 006', async () => {
+    const { ctxAdmin } = await criarClinicaComAdmin(criarClienteAdmin());
+    const agenda = await prepararAgenda(ctxAdmin);
+
+    const agendamento = await agendamentoService.criar(ctxAdmin, dadosAgendamento(agenda));
+
+    expect(agendamento.paciente_id).toBe(agenda.paciente.id);
+  });
 
   itComBanco('Cenário 3: Editar dados do paciente', async () => {
     const db = criarClienteAdmin();
@@ -82,7 +91,18 @@ describe('FEATURE_004 — Cadastro de Pacientes', () => {
     expect(editado.canais_comunicacao).toEqual([{ canal: 'whatsapp', contato: '(54) 98888-1111', preferido: true }]);
     expect(await pacienteService.obter(ctxAdmin, paciente.id)).toEqual(editado);
   });
-  it.todo('Cenário 3 (integração): agendamentos e prontuário continuam vinculados após a edição — Feature 006 e 010');
+  itComBanco('Cenário 3 (integração): agendamentos continuam vinculados após a edição — Feature 006', async () => {
+    const { ctxAdmin } = await criarClinicaComAdmin(criarClienteAdmin());
+    const agenda = await prepararAgenda(ctxAdmin);
+    const agendamento = await agendamentoService.criar(ctxAdmin, dadosAgendamento(agenda));
+
+    await pacienteService.editar(ctxAdmin, agenda.paciente.id, {
+      canais_comunicacao: [{ canal: 'sms', contato: '(54) 98888-1111', preferido: true }],
+    });
+
+    expect((await agendamentoService.obter(ctxAdmin, agendamento.id))?.paciente_id).toBe(agenda.paciente.id);
+  });
+  it.todo('Cenário 3 (integração): prontuário continua vinculado após a edição — Feature 010');
 
   itComBanco('Cenário 4: Idade calculada a partir do aniversário', async () => {
     const { ctxAdmin } = await criarClinicaComAdmin(criarClienteAdmin());

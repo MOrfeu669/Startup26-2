@@ -16,12 +16,13 @@ Depois de criar agendamentos (Feature 006), os usuários precisam visualizá-los
 ## Requisitos
 
 - [ ] Exibir agendamentos em formato de calendário
-- [ ] Alternar a visualização entre dia e semana durante o uso
+- [ ] Alternar a visualização entre dia e semana durante o uso (não há visão de mês)
 - [ ] Filtrar por dentista
 - [ ] Filtrar por cadeira
 - [ ] Dentista vê a agenda completa da clínica (todos os dentistas), não apenas a própria
 - [ ] Recepcionista vê a agenda de todos os dentistas
-- [ ] Exibir o status de cada agendamento ("agendado", "em espera", "iniciado", "concluído")
+- [ ] Exibir o status de cada agendamento ("agendado", "em espera", "iniciado", "concluído", "cancelado")
+- [ ] Agendamento `cancelado` aparece na grade, riscado
 - [ ] Refletir os bloqueios de agenda do dentista, inclusive recorrentes (Feature 006)
 - [ ] Exibir alertas visuais (cor destacada ou sinal "!") para: cadeira desativada (Feature 002), dentista removido (Feature 003) e agendamento fora do novo horário de funcionamento (Feature 002)
 - [ ] Atualização em tempo real, via Supabase Realtime
@@ -79,6 +80,13 @@ Quando o usuário visualiza a agenda
 Então esse agendamento aparece destacado com sinal de alerta "!"
 ```
 
+### Cenário 8: Cancelado aparece riscado
+```
+Dado um agendamento com status "cancelado" no dia exibido
+Quando o usuário abre a agenda
+Então esse agendamento aparece na grade, riscado
+```
+
 ---
 
 ## Exemplos de Código
@@ -118,14 +126,12 @@ const agendamentos = await agendaService.listar({
 - [stated] Visualização em calendário
 - [stated] Filtro por dentista e por cadeira
 - [correção] Visualização alterna entre dia e semana durante o uso
+- [stated] 2026-10-03 — não há visualização por mês
+- [stated] 2026-10-03 — agendamento `cancelado` aparece na grade, riscado
 - [correção] Dentista e Recepcionista veem a agenda completa da clínica (todos os dentistas), não uma visão restrita
 - [correção] Atualização em tempo real
 - [stated] Tempo real implementado com Supabase Realtime
 - [correção] Agendamentos com cadeira desativada, dentista removido ou fora do novo horário de funcionamento exibem alerta visual (cor destacada ou sinal "!")
-
-### ⚠️ PENDENTE (não definido ainda pelo usuário)
-- ⚠️ Existe visualização por mês, além de dia e semana?
-- ⚠️ Agendamentos com status "cancelado" aparecem na agenda (por exemplo, riscados) ou são ocultados?
 
 ---
 
@@ -133,4 +139,4 @@ const agendamentos = await agendaService.listar({
 
 Feature majoritariamente de leitura/visualização — depende inteiramente dos dados já criados nas Features 002, 003 e 006.
 
-**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: INC-01, ESC-03, ESC-09, REF-02).
+**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: INC-01, ESC-03, ESC-09, REF-02). 2026-10-03 — Bernardo: só dia e semana; cancelado aparece riscado.

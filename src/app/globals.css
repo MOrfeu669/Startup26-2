@@ -78,7 +78,23 @@ td {
 nav {
   display: flex;
   gap: 16px;
+  align-items: center;
   padding: 12px 24px;
   background: #fff;
   border-bottom: 1px solid var(--cor-borda);
+}
+
+nav a {
+  color: var(--cor-primaria);
+  text-decoration: none;
+}
+
+nav form {
+  margin-left: auto;
+}
+
+nav button {
+  background: transparent;
+  color: var(--cor-texto);
+  border: 1px solid var(--cor-borda);
 }

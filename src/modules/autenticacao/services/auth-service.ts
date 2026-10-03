@@ -40,6 +40,9 @@ export async function login(entrada: unknown, deps: DepsAuth): Promise<Resultado
   const { email, senha } = validar(loginSchema, entrada);
 
   const { data, error } = await deps.auth.auth.signInWithPassword({ email, password: senha });
+  if (error && /fetch|network|ECONNREFUSED/i.test(`${error.message} ${error.name}`)) {
+    falhaDoBanco('entrar', error);
+  }
   if (error || !data.session) throw new ErroNegocio(CREDENCIAIS_INVALIDAS);
 
   const usuario = await carregarUsuario(deps.db, data.user.id);

@@ -320,4 +320,118 @@ describe('migrations aplicam sem erro em um Postgres limpo', () => {
       expect(rows[0]).toEqual({ anon: false, authenticated: false, service_role: true });
     });
   });
+
+  describe('Feature 005 — procedimentos', () => {
+    it('exige nome, tempo positivo e valor não negativo', async () => {
+      const clinicaId = await criarClinica(await criarAdmin());
+      const inserir = (tempo: number, valor: number, nome = 'Limpeza') =>
+        db.query(
+          'insert into procedimentos (clinica_id, nome, tempo_medio_minutos, valor_medio) values ($1, $2, $3, $4)',
+          [clinicaId, nome, tempo, valor],
+        );
+      await inserir(30, 0);
+      await expect(inserir(0, 10)).rejects.toThrow(/procedimentos_tempo_medio_minutos_check/);
+      await expect(inserir(10, -1)).rejects.toThrow(/procedimentos_valor_medio_check/);
+      await expect(inserir(10, 10, '  ')).rejects.toThrow(/procedimentos_nome_check/);
+    });
+  });
+
+  describe('Feature 006 — agendamentos', () => {
+    async function cenario() {
+      const adminId = await criarAdmin();
+      const clinicaId = await criarClinica(adminId);
+      const usuarioDentista = await criarAuthUser(db);
+      await db.query("insert into usuarios (id, nome, email, papel, clinica_id) values ($1, 'Dr. Carlos', $2, 'dentista', $3)", [
+        usuarioDentista,
+        `carlos-${usuarioDentista}@x.com`,
+        clinicaId,
+      ]);
+      const dentista = await db.query<{ id: string }>(
+        "insert into dentistas (usuario_id, clinica_id, nome, cro, telefone, cpf) values ($1, $2, 'Dr. Carlos', 'CRO 1', '1', '12345678909') returning id",
+        [usuarioDentista, clinicaId],
+      );
+      const paciente = await db.query<{ id: string }>(
+        "insert into pacientes (clinica_id, nome) values ($1, 'João') returning id",
+        [clinicaId],
+      );
+      const cadeira = await db.query<{ id: string }>(
+        "select id from cadeiras where clinica_id = $1 and identificacao = 'Cadeira 1'",
+        [clinicaId],
+      );
+      return {
+        adminId,
+        clinicaId,
+        dentistaId: dentista.rows[0]!.id,
+        pacienteId: paciente.rows[0]!.id,
+        cadeiraId: cadeira.rows[0]!.id,
+      };
+    }
+
+    async function marcar(
+      base: Awaited<ReturnType<typeof cenario>>,
+      inicio: string,
+      fim: string,
+      extras: { emergencia?: boolean; pacienteId?: string; dentistaId?: string; cadeiraId?: string } = {},
+    ) {
+      return db.query(
+        `insert into agendamentos (clinica_id, paciente_id, dentista_id, cadeira_id, data_hora_inicio, data_hora_fim, emergencia, criado_por)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          base.clinicaId,
+          extras.pacienteId ?? base.pacienteId,
+          extras.dentistaId ?? base.dentistaId,
+          extras.cadeiraId ?? base.cadeiraId,
+          inicio,
+          fim,
+          extras.emergencia ?? false,
+          base.adminId,
+        ],
+      );
+    }
+
+    it('impede sobreposição na cadeira e aceita horários adjacentes, cancelado e emergência', async () => {
+      const base = await cenario();
+      await marcar(base, '2026-10-15T17:00:00Z', '2026-10-15T17:30:00Z');
+      await expect(marcar(base, '2026-10-15T17:15:00Z', '2026-10-15T17:45:00Z')).rejects.toThrow(
+        /agendamentos_cadeira_sem_sobreposicao/,
+      );
+      await marcar(base, '2026-10-15T17:30:00Z', '2026-10-15T18:00:00Z');
+
+      const outroPaciente = await db.query<{ id: string }>(
+        "insert into pacientes (clinica_id, nome) values ($1, 'Ana') returning id",
+        [base.clinicaId],
+      );
+      await marcar(base, '2026-10-15T17:00:00Z', '2026-10-15T17:30:00Z', {
+        emergencia: true,
+        pacienteId: outroPaciente.rows[0]!.id,
+      });
+
+      await db.query(
+        "update agendamentos set status = 'cancelado' where clinica_id = $1 and emergencia = false and data_hora_inicio = '2026-10-15T17:00:00Z'",
+        [base.clinicaId],
+      );
+      await marcar(base, '2026-10-15T17:00:00Z', '2026-10-15T17:20:00Z', { pacienteId: outroPaciente.rows[0]!.id });
+    });
+
+    it('criar_agendamento recusa domingo e horário fora do expediente, e só o service_role executa', async () => {
+      const base = await cenario();
+      const chamar = (inicio: string, fim: string) =>
+        db.query(
+          `select public.criar_agendamento($1, $2, $3, $4, null, $5, $6, false, $7)`,
+          [base.clinicaId, base.pacienteId, base.dentistaId, base.cadeiraId, inicio, fim, base.adminId],
+        );
+      await expect(chamar('2026-10-18T14:00:00-03:00', '2026-10-18T14:30:00-03:00')).rejects.toThrow('DIA_SEM_ATENDIMENTO');
+      await expect(chamar('2026-10-12T19:00:00-03:00', '2026-10-12T19:30:00-03:00')).rejects.toThrow('FORA_DO_HORARIO');
+      const criado = await chamar('2026-10-12T14:00:00-03:00', '2026-10-12T14:30:00-03:00');
+      expect(criado.rows[0]).toBeTruthy();
+
+      const assinatura =
+        'public.criar_agendamento(uuid, uuid, uuid, uuid, uuid, timestamp with time zone, timestamp with time zone, boolean, uuid)';
+      const { rows } = await db.query<{ anon: boolean; service_role: boolean }>(
+        `select has_function_privilege('anon', '${assinatura}', 'execute') as anon,
+                has_function_privilege('service_role', '${assinatura}', 'execute') as service_role`,
+      );
+      expect(rows[0]).toEqual({ anon: false, service_role: true });
+    });
+  });
 });

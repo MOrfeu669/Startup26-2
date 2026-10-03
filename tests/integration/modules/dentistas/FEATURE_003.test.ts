@@ -4,8 +4,11 @@ import { ErroInfra, ErroPermissao } from '@/lib/erros';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
 import { criarClienteAnon } from '@/lib/supabase/anon';
 import { authService, carregarUsuario } from '@/modules/autenticacao';
+import { agendamentoService } from '@/modules/agendamento';
 import { dentistaService } from '@/modules/dentistas';
+import { procedimentoService } from '@/modules/procedimentos';
 import { itComBanco, usarBancoLimpo } from '@tests/support/banco';
+import { dadosAgendamento, hora, prepararAgenda } from '@tests/fixtures/agendamentos';
 import { criarClinicaComAdmin } from '@tests/fixtures/clinica';
 import { criarDentistaDeTeste } from '@tests/fixtures/dentistas';
 import { contextoDe, criarUsuarioDeTeste } from '@tests/fixtures/usuarios';
@@ -74,7 +77,15 @@ describe('FEATURE_003 — Cadastro de Dentistas', () => {
       expect(await dentistaService.obter(ctx, dentista.id)).toEqual(dentista);
     }
   });
-  it.todo('Cenário 2 (integração): dentista selecionável ao criar o agendamento real — Feature 006');
+  itComBanco('Cenário 2 (integração): dentista selecionável ao criar o agendamento real — Feature 006', async () => {
+    const { ctxAdmin } = await criarClinicaComAdmin(criarClienteAdmin());
+    const agenda = await prepararAgenda(ctxAdmin);
+
+    const agendamento = await agendamentoService.criar(ctxAdmin, dadosAgendamento(agenda));
+
+    expect(agendamento.dentista_id).toBe(agenda.dentista.id);
+    expect(agendamento.status).toBe('agendado');
+  });
 
   itComBanco('Cenário 3: Cadastro sem limite de dentistas', async () => {
     const { ctxAdmin } = await criarClinicaComAdmin(criarClienteAdmin());
@@ -102,7 +113,15 @@ describe('FEATURE_003 — Cadastro de Dentistas', () => {
     const { usuario } = await authService.login({ email, senha }, { auth: criarClienteAnon(), db });
     expect(usuario.id).toBe(dentista.usuario_id);
   });
-  it.todo('Cenário 4 (integração): agendamentos do dentista continuam vinculados após a edição — Feature 006');
+  itComBanco('Cenário 4 (integração): agendamentos do dentista continuam vinculados após a edição — Feature 006', async () => {
+    const { ctxAdmin } = await criarClinicaComAdmin(criarClienteAdmin());
+    const agenda = await prepararAgenda(ctxAdmin);
+    const agendamento = await agendamentoService.criar(ctxAdmin, dadosAgendamento(agenda));
+
+    await dentistaService.editar(ctxAdmin, agenda.dentista.id, { telefone: '(54) 98888-1111' });
+
+    expect((await agendamentoService.obter(ctxAdmin, agendamento.id))?.dentista_id).toBe(agenda.dentista.id);
+  });
 
   itComBanco('Cenário 5: Cadastrar dentista com especialidade (informativa)', async () => {
     const { ctxAdmin } = await criarClinicaComAdmin(criarClienteAdmin());
@@ -119,7 +138,28 @@ describe('FEATURE_003 — Cadastro de Dentistas', () => {
     const editado = await dentistaService.editar(ctxAdmin, dentista.id, { especialidades: ['Endodontia', 'Implantodontia'] });
     expect(editado.especialidades).toEqual(['Endodontia', 'Implantodontia']);
   });
-  it.todo('Cenário 5 (integração): dentista com especialidade aceita agendamento de qualquer procedimento — Feature 006');
+  itComBanco('Cenário 5 (integração): dentista com especialidade aceita agendamento de qualquer procedimento — Feature 006', async () => {
+    const { ctxAdmin } = await criarClinicaComAdmin(criarClienteAdmin());
+    const { dentista } = await criarDentistaDeTeste(ctxAdmin, { especialidades: ['Endodontia'] });
+    const agenda = await prepararAgenda(ctxAdmin);
+    const procedimento = await procedimentoService.criar(ctxAdmin, {
+      nome: 'Restauração',
+      tempo_medio_minutos: 40,
+      valor_medio: 150,
+    });
+
+    const agendamento = await agendamentoService.criar(
+      ctxAdmin,
+      dadosAgendamento(agenda, {
+        dentista_id: dentista.id,
+        procedimento_id: procedimento.id,
+        data_hora_inicio: hora('16:00'),
+        data_hora_fim: hora('16:40'),
+      }),
+    );
+
+    expect(agendamento).toMatchObject({ dentista_id: dentista.id, procedimento_id: procedimento.id, status: 'agendado' });
+  });
 
   itComBanco('Cenário 6: Admin remove um dentista com agendamentos futuros', async () => {
     const db = criarClienteAdmin();
@@ -141,8 +181,26 @@ describe('FEATURE_003 — Cadastro de Dentistas', () => {
       'Credenciais inválidas',
     );
   });
-  it.todo('Cenário 6 (integração): alerta nos agendamentos futuros "agendado" do dentista removido — Feature 006');
-  it.todo('Cenário 6 (integração): bloqueio de novo agendamento com o dentista removido — Feature 006 (Cenário 11)');
+  itComBanco('Cenário 6 (integração): alerta nos agendamentos futuros "agendado" do dentista removido — Feature 006', async () => {
+    const { ctxAdmin } = await criarClinicaComAdmin(criarClienteAdmin());
+    const agenda = await prepararAgenda(ctxAdmin);
+    const agendamento = await agendamentoService.criar(ctxAdmin, dadosAgendamento(agenda));
+
+    await dentistaService.remover(ctxAdmin, agenda.dentista.id);
+    const relido = await agendamentoService.obter(ctxAdmin, agendamento.id);
+
+    expect(relido?.status).toBe('agendado');
+    expect(relido?.alertas).toContain('dentista_indisponivel');
+  });
+  itComBanco('Cenário 6 (integração): bloqueio de novo agendamento com o dentista removido — Feature 006 (Cenário 11)', async () => {
+    const { ctxAdmin } = await criarClinicaComAdmin(criarClienteAdmin());
+    const agenda = await prepararAgenda(ctxAdmin);
+    await dentistaService.remover(ctxAdmin, agenda.dentista.id);
+
+    await expect(agendamentoService.criar(ctxAdmin, dadosAgendamento(agenda))).rejects.toMatchObject({
+      message: 'Dentista indisponível',
+    });
+  });
   it.todo('Cenário 6 (integração): destaque visual na Agenda (cor ou "!") — Feature 007');
 
   describe('regras de negócio', () => {

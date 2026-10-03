@@ -103,6 +103,20 @@ export async function remover(ctx: Contexto, dentistaId: unknown): Promise<Denti
   return data as Dentista;
 }
 
+/** Dentista cujo login é o usuário autenticado; `null` se ele não for um dentista desta clínica. */
+export async function obterDoUsuario(ctx: Contexto): Promise<Dentista | null> {
+  exigirPermissao(ctx.usuario, 'dentista:ver');
+  const clinicaId = clinicaDoUsuario(ctx.usuario);
+  const { data, error } = await ctx.db
+    .from('dentistas')
+    .select(COLUNAS)
+    .eq('usuario_id', ctx.usuario.id)
+    .eq('clinica_id', clinicaId)
+    .maybeSingle();
+  if (error) falhaDoBanco('carregar dentista do usuário', error);
+  return data as Dentista | null;
+}
+
 /** Dentista da clínica do usuário; `null` se não existir ou for de outra clínica. */
 export async function obter(ctx: Contexto, dentistaId: unknown): Promise<Dentista | null> {
   exigirPermissao(ctx.usuario, 'dentista:ver');

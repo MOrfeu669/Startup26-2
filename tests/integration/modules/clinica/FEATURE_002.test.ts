@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { ErroPermissao } from '@/lib/erros';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
 import { carregarUsuario, exigirPermissao } from '@/modules/autenticacao';
+import { agendamentoService } from '@/modules/agendamento';
 import { alertasDoAgendamento, atendeNoDia, clinicaService, dentroDoFuncionamento } from '@/modules/clinica';
 import { itComBanco, usarBancoLimpo } from '@tests/support/banco';
+import { dadosAgendamento, prepararAgenda } from '@tests/fixtures/agendamentos';
 import { criarClinicaComAdmin } from '@tests/fixtures/clinica';
 import { contextoDe, criarUsuarioDeTeste } from '@tests/fixtures/usuarios';
 
@@ -105,8 +107,28 @@ describe('FEATURE_002 — Criar/Configurar Clínica', () => {
       alertasDoAgendamento({ clinica, cadeira: desativada, inicio: '2026-10-15T09:00:00-03:00', fim: '2026-10-15T10:00:00-03:00' }),
     ).toEqual(['cadeira_indisponivel']);
   });
-  it.todo('Cenário 5 (integração): alerta no agendamento real com status "agendado" — Feature 006');
-  it.todo('Cenário 5 (integração): cadeira desativada bloqueia novos agendamentos — Feature 006 (Cenário 10)');
+  itComBanco('Cenário 5 (integração): alerta no agendamento real com status "agendado" — Feature 006', async () => {
+    const { ctxAdmin, cadeiras } = await criarClinicaComAdmin(criarClienteAdmin());
+    const cadeira2 = cadeiras.find((cadeira) => cadeira.identificacao === 'Cadeira 2')!;
+    const agenda = await prepararAgenda(ctxAdmin);
+    const agendamento = await agendamentoService.criar(ctxAdmin, dadosAgendamento(agenda, { cadeira_id: cadeira2.id }));
+
+    await clinicaService.desativarCadeira(ctxAdmin, cadeira2.id);
+    const relido = await agendamentoService.obter(ctxAdmin, agendamento.id);
+
+    expect(relido?.status).toBe('agendado');
+    expect(relido?.alertas).toContain('cadeira_indisponivel');
+  });
+  itComBanco('Cenário 5 (integração): cadeira desativada bloqueia novos agendamentos — Feature 006 (Cenário 10)', async () => {
+    const { ctxAdmin, cadeiras } = await criarClinicaComAdmin(criarClienteAdmin());
+    const cadeira2 = cadeiras.find((cadeira) => cadeira.identificacao === 'Cadeira 2')!;
+    await clinicaService.desativarCadeira(ctxAdmin, cadeira2.id);
+    const agenda = await prepararAgenda(ctxAdmin);
+
+    await expect(
+      agendamentoService.criar(ctxAdmin, dadosAgendamento(agenda, { cadeira_id: cadeira2.id })),
+    ).rejects.toMatchObject({ message: 'Cadeira indisponível' });
+  });
   it.todo('Cenário 5 (integração): destaque visual na Agenda (cor ou "!") — Feature 007');
 
   itComBanco('Cenário 6: Alterar horário de funcionamento com agendamentos fora do novo horário', async () => {
@@ -124,7 +146,20 @@ describe('FEATURE_002 — Criar/Configurar Clínica', () => {
       'fora_de_horario',
     ]);
   });
-  it.todo('Cenário 6 (integração): agendamento real das 17:30 exibe "fora de horário" e NÃO é cancelado — Feature 006');
+  itComBanco('Cenário 6 (integração): agendamento real das 17:30 exibe "fora de horário" e NÃO é cancelado — Feature 006', async () => {
+    const { ctxAdmin } = await criarClinicaComAdmin(criarClienteAdmin());
+    const agenda = await prepararAgenda(ctxAdmin);
+    const agendamento = await agendamentoService.criar(
+      ctxAdmin,
+      dadosAgendamento(agenda, { data_hora_inicio: AS_17_30, data_hora_fim: AS_18_00 }),
+    );
+
+    await clinicaService.atualizarHorario(ctxAdmin, { horario_abertura: '08:00', horario_fechamento: '17:00' });
+    const relido = await agendamentoService.obter(ctxAdmin, agendamento.id);
+
+    expect(relido?.status).toBe('agendado');
+    expect(relido?.alertas).toContain('fora_de_horario');
+  });
   it.todo('Cenário 6 (integração): destaque visual na Agenda — Feature 007');
 
   describe('regras de negócio', () => {
