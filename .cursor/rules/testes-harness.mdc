@@ -1,0 +1,27 @@
+---
+description: Padrão de testes e exemplos executáveis (Harness) com Vitest
+globs: tests/**/*.ts
+alwaysApply: false
+---
+
+# Harness: testes e exemplos
+
+- **1 arquivo por feature:** `FEATURE_NNN.test.ts`, espelhando os Cenários da spec.
+- Cada Cenário da spec = 1 `it`, com o mesmo nome ("Cenário 1: Login com sucesso").
+- Unitários (`tests/unit/`): regras dos services isoladas.
+- Integração (`tests/integration/`): fluxo completo rota/API + banco.
+- Rodam contra o **Supabase CLI local** (`supabase start`: Postgres + Auth no Docker), nunca contra o Supabase de produção. Sem o Supabase local no ar, os testes de integração são pulados (`describe.skipIf`).
+- Cenário que depende de feature futura: testa só a parte da feature atual; o resto vira `it.todo`.
+- Use seeds/fixtures por entidade, compartilhadas entre testes e exemplos.
+- Cada teste deve deixar o banco limpo (isolamento entre casos).
+
+```ts
+describe('FEATURE_001 — Autenticação & Roles', () => {
+  it('Cenário 2: Login com senha incorreta', async () => {
+    // Dado / Quando / Então conforme a spec
+  });
+});
+```
+
+- **Exemplos** (`tests/examples/`): scripts executáveis isolados, baseados na seção "Exemplos de Código" da spec, adaptados à API real; devem mostrar o resultado real no banco.
+- Não teste comportamento que a spec não define. Itens `⚠️ PENDENTE` viram `it.todo`.

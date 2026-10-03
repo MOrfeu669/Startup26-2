@@ -1,0 +1,15 @@
+---
+description: Regras para migrations SQL do Supabase/PostgreSQL
+globs: supabase/**/*.sql
+alwaysApply: false
+---
+
+# Migrations
+
+- Migrations versionadas são a fonte da verdade do schema; nunca editar pelo painel do Supabase.
+- Uma migration por tabela, agrupada por módulo/feature (nome inclui o número da feature).
+- PK sempre `uuid` (`gen_random_uuid()`).
+- Tabelas de domínio têm `clinica_id` (FK) para isolamento multi-tenant.
+- Constraints (FK, unique, check) derivam das regras da spec **da feature sendo migrada** — não antecipar constraints de features futuras.
+- Dados clínicos nunca são apagados por remover usuário: prefira `ativo`/status a `DELETE` (ver specs 001, 011, 014).
+- Não invente colunas: se a spec estiver `⚠️ PENDENTE`, sinalize em vez de decidir.

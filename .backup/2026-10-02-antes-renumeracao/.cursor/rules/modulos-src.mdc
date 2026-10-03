@@ -1,0 +1,32 @@
+---
+description: Convenções de código dos módulos (Next.js, Supabase, Zod, autorização)
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Convenções de `src/`
+
+- Cada feature é um módulo isolado em `src/modules/<modulo>/` com `services/`, `types/`, `components/`.
+- Regra de negócio fica em `services/`. Rotas em `src/app/` e componentes só chamam services.
+- Outro módulo só é usado via função pública exportada, nunca acessando suas tabelas/dados internos.
+- Acesso a dados: cliente Supabase de `src/lib/`. **Sem ORM.**
+- Multi-tenant: toda query de domínio filtra por `clinica_id` do usuário autenticado.
+- Autorização por papel (`admin` > `dentista` > `recepcionista`) via helper centralizado.
+
+```ts
+// ✅ Schema Zod + tipo inferido, junto ao módulo
+export const criarPacienteSchema = z.object({
+  nome_completo: z.string().min(1),
+  cpf: z.string().optional(),
+});
+export type CriarPacienteInput = z.infer<typeof criarPacienteSchema>;
+
+// ✅ Valores fechados como union/enum
+export type StatusPresenca = 'em_espera' | 'iniciado' | 'concluido';
+
+// ❌ Checagem de papel solta no componente
+if (user.papel === 'admin') { ... }
+```
+
+- Nomes de domínio em português; termos técnicos em inglês.
+- Mensagens de erro de negócio devem usar o texto exato da spec (ex.: "Credenciais inválidas").
