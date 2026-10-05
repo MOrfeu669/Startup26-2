@@ -20,6 +20,9 @@ export default function LoginPage() {
       <p>
         <Link href="/recuperar-senha">Esqueci minha senha</Link>
       </p>
+      <p>
+        <Link href="/cadastro-clinica">Cadastrar nova clínica</Link>
+      </p>
     </main>
   );
 }
