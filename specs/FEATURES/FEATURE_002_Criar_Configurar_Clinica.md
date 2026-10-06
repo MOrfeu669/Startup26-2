@@ -24,6 +24,7 @@ Antes de qualquer agendamento existir, a clínica precisa ser criada e configura
 - [ ] Ao alterar o horário de funcionamento, agendamentos futuros que ficam fora do novo horário exibem aviso "fora de horário" (não são cancelados automaticamente)
 - [ ] Configurações ficam vinculadas à clínica (multi-tenant, conforme Feature 001)
 - [ ] Cada conta Admin gerencia apenas uma clínica
+- [ ] Feriados nacionais do Brasil vêm **pré-carregados**; a clínica pode incluir ou remover dias dessa lista. `dias_atendimento` continua sendo os dias da semana em que a clínica atende
 
 ---
 
@@ -73,6 +74,14 @@ Dado uma clínica com horário 08:00-18:00 e um agendamento com status "agendado
 Quando o Admin altera o horário de funcionamento para 08:00-17:00
 Então o agendamento das 17:30 passa a exibir o aviso "fora de horário"
 E o agendamento NÃO é cancelado automaticamente
+```
+
+### Cenário 7: Feriados nacionais pré-carregados e editáveis
+```
+Dado uma clínica recém-criada, com a lista nacional de feriados já carregada
+Quando o Admin remove um feriado da lista e inclui um dia municipal
+Então o sistema deixa de tratar o feriado removido como dia sem atendimento
+E passa a tratar o dia municipal como feriado da clínica
 ```
 
 ---
@@ -129,12 +138,10 @@ const clinica = await clinicaService.criar({
 - [correção] Cada conta Admin gerencia exatamente uma clínica
 - [correção] Cadeiras não têm restrição de quais procedimentos podem ser realizados nelas
 - [stated] Cadeira desativada e dia fora de `dias_atendimento` bloqueiam novos agendamentos (validação aplicada na Feature 006; emergência retroativa ignora)
-
-### ⚠️ PENDENTE (não definido ainda pelo usuário)
-- ⚠️ Existe algum feriado nacional pré-configurado automaticamente, ou a clínica marca manualmente os dias que não atende?
+- [stated] 2026-10-05 — feriados nacionais do Brasil vêm pré-carregados; a clínica pode incluir ou remover dias. `dias_atendimento` permanece os dias da semana em que atende
 
 ---
 
 ## Notas
 
-**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: INC-01, ESC-04, ESC-05).
+**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: INC-01, ESC-04, ESC-05). 2026-10-05 — Bernardo: feriados nacionais pré-carregados e editáveis pela clínica.

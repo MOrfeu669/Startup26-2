@@ -72,45 +72,51 @@
 - Cada clínica cadastra seus próprios dentistas — sem login compartilhado entre clínicas.
 - Sem expiração de sessão no MVP. Sem "Super Admin" acima do Admin da clínica.
 - Dados clínicos pertencem à clínica, não ao usuário — remover um usuário não apaga nada, só o acesso.
-- **Pendente:** um usuário pode acumular mais de um papel? Provedor SMTP de produção?
+- `papel` em `usuarios` é único. O Admin que também atende ganha um registro em `dentistas` com o **mesmo** `usuario_id` (um login; aparece na agenda com CRO).
+- Primeiro Admin: tela `/cadastro-clinica` (`pnpm admin:criar` é atalho técnico).
+- **Pendente:** provedor SMTP de produção.
 
 ### 002 — Criar/Configurar Clínica
 - Horário de funcionamento **único e fixo** (mesmo horário todos os dias em que atende — não varia por dia da semana).
 - Dias de atendimento (incluindo fins de semana/feriados) são configuráveis por clínica.
+- Feriados nacionais do Brasil vêm **pré-carregados**; a clínica pode incluir ou remover dias.
 - Cadeira pode ser desativada → agendamentos futuros nela exibem alerta visual (cor/`!`), sem cancelamento automático.
 - Mudar o horário de funcionamento não cancela agendamentos fora do novo horário — eles exibem aviso "fora de horário".
 - Um Admin gerencia exatamente uma clínica. Cadeiras não têm restrição de procedimento.
 - Cadeira inativa e dia fora de `dias_atendimento` **bloqueiam novos agendamentos** (exceto emergência retroativa).
-- **Pendente:** feriados automáticos vs. configuração manual.
 
 ### 003 — Cadastro de Dentistas
 - Campos: nome, CRO, telefone, CPF.
 - Especialidade é **apenas informativa** — não restringe quais procedimentos o dentista pode realizar (decisão revertida no meio da sessão, ver seção 5).
 - Dentista segue o horário geral da clínica, com exceções via **bloqueios de agenda** (antes "compromissos extra", Feature 006).
 - Admin pode remover dentista → agendamentos futuros dele ficam com alerta (não são apagados). Dentista inativo não recebe novos agendamentos.
+- Admin pode ser cadastrado como dentista no **mesmo** `usuario_id`.
+- **Pendente:** foto de perfil (fora do MVP).
 
 ### 004 — Cadastro de Pacientes
 - **Obrigatórios: nome completo + pelo menos um canal de comunicação** (SMS/Email/WhatsApp + contato), indicado pelo paciente e registrado pela clínica. Vários canais permitidos, exatamente um preferido. Todo o resto é opcional.
 - CPF único por clínica quando informado (bloqueia duplicado, aponta o registro existente).
 - Sexo: masculino / feminino / outro.
 - Idade é **calculada** pela data de nascimento. Responsável legal (nome completo + CPF obrigatórios, telefone opcional) só quando há data de nascimento e o paciente é menor de idade.
-- Paciente é **exclusivo da clínica**; a lista de pacientes pode ser exportada/importada (detalhes pendentes).
+- CPF do responsável **pode repetir** na mesma clínica (irmãos).
+- Paciente é **exclusivo da clínica**; exportação/importação da lista fica **fora do MVP** (detalhes pendentes).
 - "Todos editam" vale só para a Visão Geral do prontuário.
 
 ### 005 — Criar Procedimento
 - Nome reflete a função do procedimento (sem campo de categoria separado).
 - Tempo e valor são **médias/estimativas**, nunca fixos.
-- Pode ser criado **sem materiais vinculados** — materiais podem ser adicionados depois (resolve dependência cronológica com a Feature 017/Estoque).
+- Materiais na criação são **opcionais** — pode nascer com ou sem, e receber depois (Feature 017).
 - **Sem reserva de material**: os materiais vinculados são baixados na conclusão do atendimento.
 - Qualquer dentista pode ser agendado para qualquer procedimento (sem restrição de especialidade).
+- Procedimento **não é excluído após uso**; continua disponível para novos agendamentos.
 - Só o Admin pode excluir um procedimento; edição é livre.
 
 ### 006 — Criar Agendamento
-- Requer paciente, dentista, cadeira, hora de início e fim. **Procedimento é opcional** (avulso ou itens do Plano de Tratamento).
+- Requer paciente, dentista, cadeira, hora de início e fim. **Procedimento é opcional**: avulso **ou** itens do Plano de Tratamento, **nunca os dois**.
 - Validações: cadeira livre e ativa, dentista ativo e disponível (sem bloqueio de agenda), dia de atendimento, paciente sem conflito de horário, **controle de concorrência** (duas requisições simultâneas nunca reservam o mesmo slot).
-- Suporta **registro retroativo de emergência**, que ignora essas validações.
-- Sem antecedência mínima para agendar.
-- **Bloqueios de agenda** (Dentista ou Admin), com recorrência (formato pendente).
+- Suporta **registro retroativo de emergência** (qualquer papel), que ignora essas validações.
+- Sem antecedência mínima **nem máxima** para agendar.
+- **Bloqueios de agenda** (Dentista ou Admin): no MVP **só pontual**; recorrência fora (formato pendente).
 - Status: `agendado` → `em_espera` (opcional) → `iniciado` → `concluido`, mais `cancelado`. Marcam `iniciado`: o dentista responsável ou o Admin. **Salvar a Evolução (010) conclui** o atendimento, o que alimenta Histórico (010), Retorno (009), baixa de Estoque (017), faturamento e Ocupação no Dashboard (019).
 - Sem reserva de material.
 
@@ -354,18 +360,23 @@ Cada uma das specs contém sua própria seção completa de "Exemplos de Código
 
 ## 8. Pendências Ainda Abertas (menores, não bloqueantes)
 
-Lista consolidada em 2026-10-02. O detalhe de cada uma está na seção `⚠️ PENDENTE` da spec.
+Lista consolidada em 2026-10-02, atualizada em 2026-10-05 (MVP). O detalhe de cada uma está na seção `⚠️ PENDENTE` da spec.
 
 **Provedores e infraestrutura**
 - Provedor SMTP de produção (001), provedor de SMS/WhatsApp (020), provedor de assinatura digital (014), provedor de storage (014/015).
 
-**MVP (001–006)**
-- 001: um usuário pode acumular mais de um papel?
-- 002: feriados automáticos (calendário nacional) ou 100% manuais.
-- 003: o dentista tem foto de perfil?
-- 004: o CPF do responsável legal pode se repetir? Detalhes da exportação/importação da lista de pacientes.
-- 005: excluir procedimento já usado (arquivar?); a regra antiga "materiais vinculados na criação" foi superada pela decisão de não ter reserva — confirmar.
-- 006: antecedência **máxima** para agendar; quem pode registrar emergência retroativa; formato e nome da recorrência de bloqueios; se procedimento avulso e itens do plano podem ser combinados no mesmo agendamento. A spec tem 15 cenários; considerar dividir.
+**MVP (001–006) — o que ainda está aberto**
+- 001: SMTP de produção.
+- 003: foto de perfil (fora do MVP).
+- 004: exportação/importação da lista (fase, formato, conflito de CPF).
+- 006: formato da recorrência do bloqueio (fora do MVP). A spec tem 15 cenários; considerar dividir.
+
+**MVP (001–006) — fechado em 2026-10-05**
+- 001: papel único; Admin pode ser dentista no mesmo `usuario_id`; primeiro Admin pela tela `/cadastro-clinica`.
+- 002: feriados nacionais pré-carregados, editáveis pela clínica.
+- 004: CPF do responsável pode repetir.
+- 005: procedimento não é excluído; materiais na criação opcionais.
+- 006: sem antecedência máxima; emergência por todos os papéis; avulso XOR itens do plano; bloqueio recorrente fora do MVP.
 
 **V1 (007–013)**
 - 007: há visualização por mês? Agendamentos cancelados aparecem na agenda?

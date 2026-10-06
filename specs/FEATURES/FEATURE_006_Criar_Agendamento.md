@@ -17,21 +17,22 @@
 
 - [ ] Admin, Dentista e Recepcionista podem criar agendamento
 - [ ] Agendamento requer: paciente, dentista, cadeira, data/hora de início e hora de término
-- [ ] Agendamento pode ter, opcionalmente, **um procedimento avulso** (Feature 005) **ou** **itens de um Plano de Tratamento** do paciente (Feature 012); também pode não ter nenhum
+- [ ] Agendamento pode ter, opcionalmente, **um procedimento avulso** (Feature 005) **ou** **itens de um Plano de Tratamento** do paciente (Feature 012), nunca os dois; também pode não ter nenhum
 - [ ] Sistema valida se a cadeira está livre naquele horário
 - [ ] Sistema valida se a cadeira está **ativa** (Feature 002)
 - [ ] Sistema valida se o dentista está **ativo** (Feature 003) e disponível (sem outra consulta nem bloqueio de agenda no mesmo horário)
 - [ ] Sistema valida se o paciente já não possui outro agendamento no mesmo horário (em qualquer dentista/cadeira)
 - [ ] Sistema valida se o horário está dentro do funcionamento da clínica e se o **dia** está entre os `dias_atendimento` (Feature 002)
 - [ ] Sistema garante que duas solicitações simultâneas não reservem a mesma cadeira/horário (controle de concorrência/transação na criação)
-- [ ] Sistema permite registrar um atendimento de emergência/extraordinário já ocorrido, sem passar por nenhuma das validações acima, para fins de registro histórico na agenda
+- [ ] Sistema permite registrar um atendimento de emergência/extraordinário já ocorrido, sem passar por nenhuma das validações acima, para fins de registro histórico na agenda — **qualquer papel** (Admin, Dentista, Recepcionista)
 - [ ] Duração da consulta é definida pelo intervalo início/fim informado; quando há procedimento vinculado, o tempo médio dele pode ser usado como sugestão, ajustável manualmente
 - [ ] Ciclo de vida do agendamento: nasce `agendado` → `em_espera` (opcional, marcação de chegada, Feature 018) → `iniciado` → `concluido`; `cancelado` é estado terminal (Feature 008), possível apenas antes de `concluido`
 - [ ] A transição para `iniciado` é feita pelo **Dentista responsável** ou pelo **Admin**
 - [ ] A transição para `concluido` acontece **automaticamente ao salvar a Evolução** do atendimento (Feature 010) — não existe ação separada de "concluir"
 - [ ] Agendamento **não reserva material**; a baixa de materiais ocorre na conclusão (Feature 010/017)
-- [ ] Não há antecedência mínima exigida para criar um agendamento
-- [ ] Dentista ou Admin podem criar **bloqueios de agenda** do dentista (pontuais ou recorrentes), que impedem novos agendamentos naquele intervalo
+- [ ] Não há antecedência mínima nem **máxima** exigida para criar um agendamento
+- [ ] Dentista ou Admin podem criar **bloqueios de agenda** do dentista. No MVP o bloqueio é **só pontual**; recorrência fica fora (Cenário 13 = `it.todo`)
+- [ ] Procedimento avulso e itens do plano **não combinam** no mesmo agendamento: um, outro, ou nenhum
 
 ---
 
@@ -98,7 +99,7 @@ Então o sistema salva o agendamento normalmente, sem exigir procedimento
 ### Cenário 8b: Registrar atendimento de emergência já ocorrido
 ```
 Dado um paciente atendido em caráter de emergência, fora do fluxo normal de agendamento
-Quando um usuário registra esse atendimento retroativamente na agenda
+Quando um usuário (Admin, Dentista ou Recepcionista) registra esse atendimento retroativamente na agenda
 Então o sistema salva o registro sem aplicar as validações normais (conflito, cadeira/dentista inativos, horário e dia de funcionamento)
 E o atendimento passa a constar no histórico da agenda, para fins de registro
 ```
@@ -139,7 +140,7 @@ Dado o dentista "Dr. Carlos" com um bloqueio de agenda recorrente
 Quando um usuário tenta agendar uma consulta com ele em uma das ocorrências desse bloqueio
 Então o sistema bloqueia e retorna erro "Dentista indisponível nesse horário"
 ```
-> O formato da recorrência está PENDENTE; até a definição, este cenário vira `it.todo`.
+> Recorrência está fora do MVP (só bloqueio pontual). O formato continua PENDENTE; este cenário vira `it.todo`.
 
 ### Cenário 14: Iniciar atendimento
 ```
@@ -218,9 +219,11 @@ const agendamento = await agendamentoService.criar({
 - [stated] Salvar a Evolução (Feature 010) conclui o atendimento automaticamente; o estado `concluido` alimenta o Histórico de Consultas (Feature 010), o cálculo de retorno (Feature 009), a baixa de estoque (Feature 017), o faturamento e a ocupação no Dashboard (Feature 019)
 - [stated] Bloqueios de agenda (antes "compromissos extra-horário") são criados pelo Dentista ou pelo Admin e suportam recorrência
 - [stated] Cadeira inativa, dentista inativo e dia fora de `dias_atendimento` bloqueiam novos agendamentos; a emergência retroativa ignora essas validações
-- [stated] Agendamento pode ter procedimento avulso ou itens do Plano de Tratamento
+- [stated] Agendamento pode ter procedimento avulso **ou** itens do Plano de Tratamento, **nunca os dois** no mesmo agendamento
 - [stated] Não há reserva de material no agendamento
 - [stated] No MVP, cenários que dependem de features futuras testam só a parte desta feature; o restante vira `it.todo`
+- [stated] 2026-10-05 — não há antecedência máxima para agendar
+- [stated] 2026-10-05 — emergência retroativa pode ser registrada por **todos os papéis**
 - [correção] Criação de agendamento é protegida por controle de concorrência/transação: duas solicitações simultâneas para a mesma cadeira/horário nunca são ambas confirmadas
 - [correção] Paciente não pode ter dois agendamentos ativos no mesmo horário — EXCETO em registros de emergência
 - [correção] Agendamento pode ser criado sem procedimento vinculado — duração é definida diretamente por hora de início e hora de término
@@ -229,10 +232,7 @@ const agendamento = await agendamentoService.criar({
 - [correção] Não há antecedência mínima exigida para criar um agendamento
 
 ### ⚠️ PENDENTE (não definido ainda pelo usuário)
-- ⚠️ Existe antecedência MÁXIMA para agendar (ex: não pode agendar com mais de X meses de antecedência)?
-- ⚠️ Quem pode registrar um atendimento de emergência retroativo — todos os papéis, ou só Dentista/Admin?
-- ⚠️ Bloqueio de agenda: formato da recorrência (semanal? diária? com data de fim?), se é possível remover uma única ocorrência da série, e o nome final do conceito ("bloqueio de agenda" ou "compromisso do dentista")
-- ⚠️ Um mesmo agendamento pode combinar procedimento avulso e itens do plano, ou é um ou outro?
+- ⚠️ Bloqueio de agenda: formato da recorrência (semanal? diária? com data de fim?), se é possível remover uma única ocorrência da série, e o nome final do conceito ("bloqueio de agenda" ou "compromisso do dentista") — fora do MVP
 
 ---
 
@@ -240,4 +240,4 @@ const agendamento = await agendamentoService.criar({
 
 **Tamanho:** com as decisões de 2026-10-02 esta spec passou de 10 para 15 cenários, acima do ideal de 3–6. Sugestão a validar com o Bernardo: separar o **Bloqueio de Agenda** (Cenários 3 e 13) e/ou o **Ciclo de Vida do Atendimento** (Cenários 9 e 14) em specs próprias.
 
-**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: INC-01, INC-02, INC-04, INC-05, ESC-03, ESC-04, ESC-05, REF-03). Adicionados os Cenários 10 a 14.
+**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: INC-01, INC-02, INC-04, INC-05, ESC-03, ESC-04, ESC-05, REF-03). Adicionados os Cenários 10 a 14. 2026-10-05 — Bernardo: sem antecedência máxima; emergência por todos os papéis; bloqueio recorrente fora do MVP; avulso XOR itens do plano.

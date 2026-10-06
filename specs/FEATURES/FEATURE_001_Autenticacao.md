@@ -24,6 +24,8 @@ O paciente **não** é um usuário autenticado do sistema — ele não acessa ne
 - [ ] Hierarquia é **piramidal pura**: o Admin pode executar tudo que o Dentista pode, inclusive as ações clínicas descritas como "exclusivas do Dentista" nas demais specs
 - [ ] Cada usuário pertence a exatamente uma clínica (multi-tenant por clínica) — sem suporte a múltiplas clínicas por login no MVP
 - [ ] Admin cadastra novos usuários (Dentista, Recepcionista) — cada clínica cadastra seus próprios profissionais, sem compartilhamento entre clínicas
+- [ ] O campo `papel` em `usuarios` é **um só**. O Admin que também atende não ganha segundo login: recebe um registro em `dentistas` com o **mesmo** `usuario_id` (Feature 003) e aparece na agenda com CRO
+- [ ] O primeiro Admin de uma clínica nova é criado na tela `/cadastro-clinica` (nome, email, senha); o script `pnpm admin:criar` é só atalho técnico
 - [ ] Sistema valida credenciais e retorna sessão/token autenticado
 - [ ] Sistema bloqueia acesso a rotas/ações não permitidas para o papel do usuário
 - [ ] Sessão não expira automaticamente no MVP — usuário permanece autenticado até logout manual
@@ -138,9 +140,10 @@ await authService.solicitarRecuperacaoSenha({ email: 'dra.ana@clinica.com' });
 - [correção] MVP não possui expiração de sessão
 - [correção] Dados clínicos (agendamentos, prontuários, etc) são vinculados à clínica, não ao usuário; remover um usuário não afeta esses dados, apenas o vínculo de permissões
 - [correção] MVP não possui "Super Admin" acima do Admin da clínica
+- [stated] 2026-10-05 — `papel` em `usuarios` continua único. O dono que atende não vira dois logins: o Admin pode ter um registro em `dentistas` com o mesmo `usuario_id` (aparece na agenda com CRO)
+- [stated] 2026-10-05 — o primeiro Admin nasce pela tela `/cadastro-clinica`; `pnpm admin:criar` é atalho técnico, não o caminho oficial
 
 ### ⚠️ PENDENTE (não definido ainda pelo usuário)
-- ⚠️ Um usuário pode acumular mais de um papel simultaneamente (ex: dono que também atua como dentista e precisa aparecer na agenda com CRO), ou os papéis são sempre exclusivos?
 - ⚠️ Provedor de email (SMTP) para produção — o envio padrão do Supabase Auth tem limites (relacionado ao gap de provedor da Feature 020)
 
 ---
@@ -149,4 +152,4 @@ await authService.solicitarRecuperacaoSenha({ email: 'dra.ana@clinica.com' });
 
 Este spec deve ser validado com o usuário antes de prosseguir para a Feature 002 (Criar/Configurar Clínica), já que Feature 002 depende do conceito de Admin definido aqui.
 
-**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: INC-02, ESC-02, ESC-05).
+**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: INC-02, ESC-02, ESC-05). 2026-10-05 — Bernardo: papel único + Admin pode ser dentista no mesmo `usuario_id`; primeiro Admin pela tela `/cadastro-clinica`. SMTP de produção permanece pendente.

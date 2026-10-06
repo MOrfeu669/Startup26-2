@@ -170,13 +170,13 @@ const pacienteMenor = await pacienteService.cadastrar({
 - [stated] Idade é sempre calculada a partir da data de nascimento (não é campo armazenado)
 - [stated] Responsável legal só é exigido quando a data de nascimento é informada e resulta em menos de 18 anos
 - [stated] Pacientes são exclusivos da clínica; a lista de cadastros pode ser exportada e importada
+- [stated] 2026-10-05 — CPF do responsável legal **pode repetir** na mesma clínica (irmãos com o mesmo responsável)
 - [correção] Opções de sexo: masculino, feminino, outro
 - [correção] CPF é único por clínica quando informado: sistema bloqueia cadastro duplicado e aponta o registro existente
 - [correção] Paciente menor de idade requer nome completo e CPF do responsável legal (telefone é opcional)
 
 ### ⚠️ PENDENTE (não definido ainda pelo usuário)
-- ⚠️ Responsável legal também precisa ter CPF único validado, ou pode repetir entre irmãos (mesmo responsável, pacientes diferentes)?
-- ⚠️ Exportação/importação da lista de pacientes: em que fase entra, qual formato de arquivo, se leva só a Visão Geral ou também dados clínicos, e o que acontece ao importar um CPF que já existe na clínica de destino
+- ⚠️ Exportação/importação da lista de pacientes: em que fase entra, qual formato de arquivo, se leva só a Visão Geral ou também dados clínicos, e o que acontece ao importar um CPF que já existe na clínica de destino (fora do MVP)
 
 ---
 
@@ -184,4 +184,4 @@ const pacienteMenor = await pacienteService.cadastrar({
 
 Este cadastro cobre apenas a "Visão Geral" do Prontuário. As demais seções (Anamnese, Odontograma, Raio X, Evolução, Documentos, Débitos) são especificadas em features próprias (010, 011, 015, 014 e 013), todas dependentes deste cadastro básico existir primeiro.
 
-**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: PEN-01, INC-02, INC-03, INC-10). A regra anterior "único campo obrigatório é o nome completo" foi substituída por "nome + pelo menos um canal".
+**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: PEN-01, INC-02, INC-03, INC-10). A regra anterior "único campo obrigatório é o nome completo" foi substituída por "nome + pelo menos um canal". 2026-10-05 — Bernardo: CPF do responsável pode repetir; exportação/importação continua fora do MVP.

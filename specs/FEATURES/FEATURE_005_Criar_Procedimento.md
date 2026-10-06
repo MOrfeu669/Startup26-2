@@ -21,7 +21,8 @@ Procedimentos são os "tipos de serviço" que a clínica oferece (ex: Limpeza, R
 - [ ] Materiais vinculados (quando existentes) são **baixados do estoque na conclusão do atendimento** (Feature 010/017) — não há reserva de material ao agendar
 - [ ] Procedimento não exige nem valida especialidade do dentista — qualquer dentista pode ser agendado para qualquer procedimento
 - [ ] Procedimento pode ser editado a qualquer momento (incluindo alterar materiais e quantidades vinculados)
-- [ ] Apenas o Admin (dono da clínica) pode excluir um procedimento
+- [ ] Procedimento **não é excluído após uso**: permanece no catálogo e pode ser usado em novos agendamentos
+- [ ] Apenas o Admin (dono da clínica) pode excluir um procedimento ja criado
 - [ ] Procedimento cadastrado fica disponível para seleção no Agendamento (Feature 006, como procedimento avulso), no Plano de Tratamento (Feature 012) e no Odontograma (Feature 011)
 
 ---
@@ -115,10 +116,6 @@ const procedimento = await procedimentoService.criar({
 - [correção] Tempo e valor do procedimento são médias/estimativas, nunca fixos
 - [correção] Procedimento pode ser editado a qualquer momento; apenas o Admin pode excluí-lo
 - [correção] Procedimento NÃO se associa à especialidade do dentista — qualquer dentista pode ser agendado para qualquer procedimento
-
-### ⚠️ PENDENTE (não definido ainda pelo usuário)
-- ⚠️ Excluir um procedimento já usado em agendamentos anteriores afeta o histórico desses agendamentos, ou o procedimento fica "arquivado" e ainda referenciável no histórico?
-- ⚠️ A regra `[stated]` "Materiais são vinculados no momento da criação do procedimento" convive com a `[correção]` "pode ser criado sem materiais" — confirmar se a primeira deve ser removida
 
 ---
 

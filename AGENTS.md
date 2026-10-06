@@ -85,13 +85,13 @@ Mapeamento módulo ↔ feature: seção 2.1 de `context/HARNESS_ENGINEERING.md`.
 Consolidados das specs e de `context/ANALISE_SPECS.md`. Confirme sempre na spec da feature antes de aplicar.
 
 - **Ciclo do agendamento (006):** nasce `agendado` → `em_espera` (opcional, chegada marcada manualmente, 018) → `iniciado` → `concluido`; `cancelado` é terminal e só antes de `concluido`. "Confirmado" nas specs = `agendado`. `iniciado`: Dentista responsável ou Admin. `concluido`: **automático ao salvar a Evolução** (010); não existe ação "concluir". No MVP nenhum agendamento chega a `concluido`.
-- **Validações do agendamento (006):** cadeira livre e **ativa**, dentista **ativo** e sem consulta/bloqueio no horário, paciente sem conflito, horário dentro do funcionamento e **dia** em `dias_atendimento`; **controle de concorrência** no banco. Emergência retroativa ignora todas. Procedimento avulso **ou** itens do plano, ambos opcionais.
-- **Bloqueio de agenda (006):** criado pelo Dentista (o próprio) ou Admin; suporta recorrência (formato ⚠️ PENDENTE).
+- **Validações do agendamento (006):** cadeira livre e **ativa**, dentista **ativo** e sem consulta/bloqueio no horário, paciente sem conflito, horário dentro do funcionamento e **dia** em `dias_atendimento`; **controle de concorrência** no banco. Emergência retroativa ignora todas e pode ser registrada por **qualquer papel**. Procedimento avulso **ou** itens do plano (nunca os dois); ambos opcionais. Sem antecedência mínima nem máxima.
+- **Bloqueio de agenda (006):** criado pelo Dentista (o próprio) ou Admin; no MVP **só pontual**. Recorrência fora do MVP (formato ⚠️ PENDENTE).
 - **Especialidade do dentista é só informativa** — não restringe procedimentos (decisão revertida; não reintroduzir).
 - **Não apagar dados clínicos:** remover usuário/dentista/cadeira só desativa; agendamentos futuros ficam com **alerta**, não são cancelados nem apagados.
-- **Clínica (002):** horário único e fixo; mudar horário não cancela agendamentos (aviso "fora de horário"). Um Admin = uma clínica.
-- **Paciente (004):** obrigatório **nome + pelo menos um canal** (sms/email/whatsapp), com exatamente um preferido; CPF único por clínica quando informado; responsável legal (nome + CPF) só quando a data de nascimento indica menor de 18; idade sempre calculada.
-- **Procedimento (005):** tempo e valor são médias; materiais só com a 017; só Admin exclui.
+- **Clínica (002):** horário único e fixo; mudar horário não cancela agendamentos (aviso "fora de horário"). Um Admin = uma clínica. Feriados nacionais do Brasil vêm pré-carregados e a clínica pode incluir/remover dias.
+- **Paciente (004):** obrigatório **nome + pelo menos um canal** (sms/email/whatsapp), com exatamente um preferido; CPF único por clínica quando informado; CPF do responsável **pode repetir**; responsável legal (nome + CPF) só quando a data de nascimento indica menor de 18; idade sempre calculada.
+- **Procedimento (005):** tempo e valor são médias; materiais opcionais na criação (e depois, Feature 017); **não é excluído**.
 - **Material/estoque (017):** **não existe reserva**. A baixa acontece ao concluir o atendimento (salvar Evolução), consumindo lotes por **FEFO**; vencido é removido automaticamente; toda movimentação gera log.
 - **Cancelamento (008):** motivo obrigatório; confirmação extra reverte automaticamente registros `confirmado` do odontograma para `revertido`.
 - **Retorno (009):** imutável; prazo configurável com catch-up; notificação de retorno é **crítica** até o novo agendamento; contato com o paciente é manual.
@@ -106,12 +106,13 @@ Consolidados das specs e de `context/ANALISE_SPECS.md`. Confirme sempre na spec 
 
 Use interface/abstração e sinalize:
 
-- **001:** usuário acumular papéis (até decidir: um único `papel`); SMTP de produção; como o primeiro Admin é criado (sem Super Admin).
-- **002:** feriados automáticos vs. manuais. **003:** foto de perfil.
-- **004:** CPF do responsável pode repetir; exportação/importação (fase, formato, conflito de CPF).
-- **005:** excluir procedimento já usado (apagar ou arquivar); regra `[stated]` de materiais na criação.
-- **006:** antecedência máxima; quem registra emergência retroativa; formato da recorrência do bloqueio; combinar procedimento avulso + itens do plano.
-- **013 Débitos:** spec inteira a especificar (sem cenários).
+- **001:** SMTP de produção. Papel em `usuarios` é único; o Admin que atende reutiliza o mesmo `usuario_id` em `dentistas`. Primeiro Admin: tela `/cadastro-clinica`.
+- **002:** (feriados definidos: nacionais pré-carregados, editáveis.)
+- **003:** foto de perfil (fora do MVP).
+- **004:** exportação/importação (fase, formato, conflito de CPF) — fora do MVP. CPF do responsável pode repetir.
+- **005:** (procedimento não é excluído; materiais na criação opcionais.)
+- **006:** formato da recorrência do bloqueio (fora do MVP). Sem antecedência máxima; emergência por todos os papéis; avulso XOR itens do plano.
+- **013 Débitos:** formas de pagamento, desconto, Dashboard, alerta de atraso.
 - **V1.5:** provedor de storage, assinatura digital, SMS/WhatsApp.
 - **Técnico:** fuso horário de referência (adotado provisoriamente `America/Sao_Paulo`).
 

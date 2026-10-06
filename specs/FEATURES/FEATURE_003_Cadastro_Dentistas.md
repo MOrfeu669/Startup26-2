@@ -18,7 +18,8 @@ Este cadastro é o registro do **profissional** em si — dados de quem ele é �
 ## Requisitos
 
 - [ ] Admin cadastra dentista vinculado à clínica
-- [ ] Cadastro cria automaticamente o usuário com papel `dentista` (integração com Feature 001)
+- [ ] Cadastro de um profissional novo cria automaticamente o usuário com papel `dentista` (integração com Feature 001)
+- [ ] O Admin que também atende **não** ganha segundo login: o cadastro de dentista reutiliza o `usuario_id` do Admin (mesmo login, aparece na agenda com CRO)
 - [ ] Cadastro captura: nome, CRO, telefone, CPF
 - [ ] Cadastro pode registrar especialidade(s) do dentista de forma informativa (não restringe quais procedimentos podem ser agendados para ele — ver Feature 005)
 - [ ] Número de dentistas cadastrados não tem limite
@@ -78,6 +79,15 @@ E o dentista deixa de aceitar novos agendamentos (Feature 006)
 ```
 > No MVP, testa-se a marcação de alerta e o bloqueio de novos agendamentos; o destaque visual na Agenda (Feature 007, V1) fica como `it.todo`.
 
+### Cenário 7: Admin também atende
+```
+Dado um Admin autenticado na própria clínica
+Quando ele se cadastra como dentista informando CRO, telefone e CPF
+Então o sistema cria o registro em `dentistas` com o mesmo `usuario_id` do Admin
+E não cria um segundo login
+E esse Admin passa a aparecer na lista de dentistas da agenda
+```
+
 ---
 
 ## Exemplos de Código
@@ -111,7 +121,7 @@ const dentista = await dentistaService.cadastrar({
 
 ## Dependências
 
-- Feature 001 (Autenticação & Roles) — cadastro de dentista gera um usuário com papel `dentista`
+- Feature 001 (Autenticação & Roles) — cadastro de dentista novo gera um usuário com papel `dentista`; o Admin que atende reutiliza o próprio `usuario_id`
 - Feature 002 (Criar/Configurar Clínica) — dentista é vinculado a uma clínica já existente
 
 ---
@@ -125,9 +135,11 @@ const dentista = await dentistaService.cadastrar({
 - [correção] Dentista segue o horário geral da clínica; exceções são tratadas como bloqueios de agenda (Feature 006)
 - [correção] Admin pode remover um dentista; agendamentos futuros vinculados a ele passam a exibir alerta (não são cancelados)
 - [stated] Dentista inativo (removido) bloqueia novos agendamentos com ele (validação aplicada na Feature 006; emergência retroativa ignora)
+- [stated] 2026-10-05 — o Admin pode ter um registro em `dentistas` com o mesmo `usuario_id` (um login; aparece na agenda com CRO)
+- [stated] 2026-10-05 — foto de perfil **não entra no MVP**
 
 ### ⚠️ PENDENTE (não definido ainda pelo usuário)
-- ⚠️ Dentista tem foto de perfil?
+- ⚠️ Dentista tem foto de perfil? (fora do MVP)
 
 ---
 
@@ -135,4 +147,4 @@ const dentista = await dentistaService.cadastrar({
 
 Este cadastro é o registro do profissional; o acesso ao sistema (login) é resolvido pela Feature 001. Fornece a lista de dentistas usada pela Feature 006 (Criar Agendamento) e pela Feature 007 (Visualizar Agenda).
 
-**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: INC-01, ESC-03, ESC-04, ESC-05, REF-01, REF-03).
+**Histórico:** 2026-10-02 — aplicadas decisões da análise de consistência (`context/ANALISE_SPECS.md`: INC-01, ESC-03, ESC-04, ESC-05, REF-01, REF-03). 2026-10-05 — Bernardo: Admin pode ser dentista no mesmo `usuario_id`; foto de perfil fora do MVP.
